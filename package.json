@@ -1,0 +1,16 @@
+{
+  "name": "refresh-token-demo",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "dev": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cookie-parser": "^1.4.6",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2"
+  }
+}
