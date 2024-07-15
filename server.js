@@ -102,6 +102,20 @@ app.post('/logout', (req, res) => {
   res.json({ message: 'Logged out successfully' });
 });
 
+// 模拟获取数据
+app.post('/get-data', (req, res) => {
+  // 从 header 取出token验证
+  const token = req.headers.authorization.split(' ')[1];
+
+  jwt.verify(token, ACCESS_TOKEN_SECRET, (err) => {
+    if (err) {
+      return res.status(401).json({ message: 'token 已过期' });
+    }
+
+    res.json({ message: '获取成功！' });
+  });
+});
+
 // 启动服务器
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

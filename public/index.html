@@ -3,9 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
+  <title>Vue 3 App</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue@3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="axios-config.js"></script>
 </head>
 <body>
-  测试00
+  <div id="app">
+    <h1>Vue 3 App</h1>
+    <div v-if="!isLoggedIn">
+      <input v-model="username" placeholder="Username">
+      <input v-model="password" type="password" placeholder="Password">
+      <button @click="login">Login</button>
+    </div>
+    <div v-else>
+      <button @click="logout">Logout</button>
+      <button @click="refreshToken">Refresh Token</button>
+      <button @click="getData">Get Data</button>
+    </div>
+    <div v-if="data">
+      <h2>Data:</h2>
+      <pre>{{ data }}</pre>
+    </div>
+  </div>
+  <script src="app.js"></script>
 </body>
 </html>
