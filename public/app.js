@@ -53,12 +53,9 @@ createApp({
 
         console.log('Refreshed token:', accessToken);
       } catch (error) {
-        console.error(error);
-
         localStorage.removeItem('accessToken');
         this.isLoggedIn = false;
         this.data = null;
-        console.log('刷新 token 失败, 退出登录!----------------')
       }
     },
     async getData() {
@@ -67,7 +64,14 @@ createApp({
         this.data = response.data;
         console.log('Got data:', JSON.stringify(response.data));
       } catch (error) {
-        console.error(error);
+        console.error( error);
+
+        if (error.response.status === 403) {
+          localStorage.removeItem('accessToken');
+          this.isLoggedIn = false;
+          this.data = null;
+          console.log('Got data:', '刷新token失败，请重新登录!')
+        }
       }
     }
   }
