@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vue 3 App</title>
+  <title>双 token demo</title>
   <script src="https://cdn.jsdelivr.net/npm/vue@3"></script>
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
   <script src="api2.js"></script>
 </head>
 <body>
   <div id="app">
-    <h1>Vue 3 App</h1>
+    <h1>使用 express 的双 token demo 实现</h1>
     <div v-if="!isLoggedIn">
       <input v-model="username" placeholder="Username">
       <input v-model="password" type="password" placeholder="Password">
@@ -19,7 +19,7 @@
     <div v-else>
       <button @click="logout">退出登录</button>
       <button @click="refreshToken">刷新token</button>
-      <button @click="getData">获取数据</button>
+      <button @click="getData('test')">获取数据</button>
       <button @click="getDataInBatches">批量获取数据</button>
     </div>
     <div v-if="data">

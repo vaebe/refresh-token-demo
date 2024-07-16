@@ -30,13 +30,12 @@ const users = [
 function generateToken(userId) {
   const accessToken = jwt.sign({ userId }, ACCESS_TOKEN_SECRET, { expiresIn: '10s' });
   const refreshToken = jwt.sign({ userId }, REFRESH_TOKEN_SECRET, { expiresIn: '30s' });
-  return {
-    accessToken,
-    refreshToken
-  }
+  return { accessToken, refreshToken };
 }
-function gteCookieRefreshTokenKey(userId) {
-  return `refreshToken-${userId}`
+
+// 获取存储刷新令牌的 cookie 键
+function getCookieRefreshTokenKey(userId) {
+  return `refreshToken-${userId}`;
 }
 
 // 存储令牌到用户 id 的映射（这里使用一个简单的对象模拟）
@@ -44,17 +43,11 @@ const accessTokens = {};
 
 // 设置 token 信息
 function setTokenInfo(res, userId) {
-  // 生成访问令牌和刷新令牌
   const { accessToken, refreshToken } = generateToken(userId);
-  accessTokens[accessToken] = userId
+  accessTokens[accessToken] = userId;
 
-  /**
-   * 将刷新令牌存储在 HTTP-only cookie 中
-   * 直接返回客户端也可以，调用刷新 toekn 接口时候将 refreshToken 通过接口传递但客户端一般存储在 localStorage 中可以被获取到不够安全
-   * cookie 同样存在限制，因为需要在服务器端存储，不支持分布式应用
-   */
-  res.cookie(gteCookieRefreshTokenKey(userId), refreshToken, { httpOnly: true, secure: true, sameSite: 'strict' });
-
+  // 将刷新令牌存储在 HTTP-only cookie 中
+  res.cookie(getCookieRefreshTokenKey(userId), refreshToken, { httpOnly: true, secure: true, sameSite: 'strict' });
   res.json({ accessToken });
 }
 
@@ -64,149 +57,99 @@ app.post('/login', (req, res) => {
   const user = users.find(u => u.username === username && u.password === password);
 
   if (!user) {
-    res.status(400).json({ message: '用户不存在！' });
-    return
+    return res.status(400).json({ message: '用户不存在！' });
   }
 
-  setTokenInfo(res, user.id)
+  setTokenInfo(res, user.id);
 });
-
 
 // 获取 header 中的 token
 function getHeaderToken(req) {
-  const fullToken = req.headers.authorization
+  const fullToken = req.headers.authorization;
 
   if (!fullToken) {
-    return {
-      code: -1,
-      message: 'token 不存在！'
-    }
+    return { code: -1, message: 'token 不存在！' };
   }
 
   const token = fullToken.split(' ')[1];
   if (!token) {
-    return {
-      code: -1,
-      message: '未知的 token!'
-    }
+    return { code: -1, message: '未知的 token!' };
   }
 
-  return {
-    code: 0,
-    message: token,
-    userId: accessTokens[token]
-  }
-}
-
-
-function refreshToken(res, req,accessTokenInfo) {
-  // accessToken 验证通过 判断 refreshToken 是否可以续签
-  const refreshToken = req.cookies[gteCookieRefreshTokenKey(accessTokenInfo.userId)];
-
-  if (!refreshToken) {
-    res.status(403).json({ message: 'refreshToken 不存在！' });
-    return
-  }
-
-  try {
-    // 只要不返回错误就代表成功!
-    jwt.verify(refreshToken, REFRESH_TOKEN_SECRET);
-    setTokenInfo(res, accessTokenInfo.userId)
-  }
-  catch (err) {
-    // error.name === 'TokenExpiredError' 
-    console.log(err.name, 'token 过期');
-    res.status(403).json({ message: '未知的 refreshToken' });
-    return
-  }
+  return { code: 0, message: token, userId: accessTokens[token] };
 }
 
 // 刷新访问令牌接口
 app.post('/refresh-token', (req, res) => {
-  const accessTokenInfo = getHeaderToken(req)
-  // 未携带 accessToken 返回错误
+  const accessTokenInfo = getHeaderToken(req);
   if (accessTokenInfo.code !== 0) {
-    res.status(403).json({ message: accessTokenInfo.message });
-    return
+    return res.status(403).json({ message: accessTokenInfo.message });
   }
 
-  // 错误有三种 JsonWebTokenError| NotBeforeError | TokenExpiredError;
   try {
-    // 只要不返回错误就代表成功!
     jwt.verify(accessTokenInfo.message, ACCESS_TOKEN_SECRET);
   } catch (err) {
-    // token 过期
     if (err.name === 'TokenExpiredError') {
-      refreshToken(res, req,accessTokenInfo)
-      return
+      const refreshToken = req.cookies[getCookieRefreshTokenKey(accessTokenInfo.userId)];
+      if (!refreshToken) {
+        return res.status(403).json({ message: 'refreshToken 不存在！' });
+      }
+
+      try {
+        // 刷新 token 验证成功返回新的 token
+        jwt.verify(refreshToken, REFRESH_TOKEN_SECRET);
+        return setTokenInfo(res, accessTokenInfo.userId);
+      } catch (err) {
+        return res.status(403).json({ message: '未知的 refreshToken' });
+      }
     }
 
-    res.status(403).json({ message: '未知的 token!' });
-    return
+    return res.status(403).json({ message: '未知的 token!' });
   }
 
-
-  refreshToken(res, req,accessTokenInfo)
+  // 上边无异常返回新的 token
+  return setTokenInfo(res, accessTokenInfo.userId);
 });
 
 // 退出登录成功
 function logoutSuccess(res, accessTokenInfo) {
-  // 清除 cookie 中的 refreshToken
-  res.clearCookie(gteCookieRefreshTokenKey(accessTokenInfo.userId));
-
-  // 清除缓存的 accessToken
+  res.clearCookie(getCookieRefreshTokenKey(accessTokenInfo.userId));
   delete accessTokens[accessTokenInfo.message];
-
   res.json({ message: 'Logged out successfully' });
 }
 
 // 登出接口
 app.post('/logout', (req, res) => {
-  const accessTokenInfo = getHeaderToken(req)
-  // 未携带 accessToken 返回错误
+  const accessTokenInfo = getHeaderToken(req);
   if (accessTokenInfo.code !== 0) {
-    res.status(403).json({ message: accessTokenInfo.message });
-    return
+    return res.status(403).json({ message: accessTokenInfo.message });
   }
 
+  // 获取到用户才可以正常退出
   try {
-    // 只要不返回错误就代表成功!
     jwt.verify(accessTokenInfo.message, ACCESS_TOKEN_SECRET);
-    logoutSuccess(res, accessTokenInfo)
+    return logoutSuccess(res, accessTokenInfo);
   } catch (err) {
-
-    // token 过期依然可以正常退出
     if (err.name === 'TokenExpiredError') {
-      logoutSuccess(res, accessTokenInfo)
-      return
+      return logoutSuccess(res, accessTokenInfo);
     }
-    // 否则返回错误
-    res.status(403).json({ message: '未知的 token!' });
+    return res.status(403).json({ message: '未知的 token!' });
   }
 });
 
 // 模拟获取数据
 app.get('/data/:id', (req, res) => {
-  const accessTokenInfo = getHeaderToken(req)
-  // 未携带 accessToken 返回错误
+  const accessTokenInfo = getHeaderToken(req);
   if (accessTokenInfo.code !== 0) {
-    res.status(403).json({ message: accessTokenInfo.message });
-    return
+    return res.status(403).json({ message: accessTokenInfo.message });
   }
 
   try {
-    // 只要不返回错误就代表成功!
     jwt.verify(accessTokenInfo.message, ACCESS_TOKEN_SECRET);
-    res.json({ message: '获取成功！', data: new Date() });
+    return res.json({ message: '获取成功！', data: new Date() });
   } catch (err) {
-    res.status(401).json({ message: 'token 已过期' });
+    return res.status(401).json({ message: 'token 已过期' });
   }
-});
-
-// 获取所有 cookie
-app.get('/get-cookies', (req, res) => {
-  const cookies = req.cookies;
-  res.send(`Cookies: ${JSON.stringify(cookies)}`);
 });
 
 // 启动服务器
