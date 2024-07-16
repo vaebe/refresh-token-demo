@@ -7,12 +7,9 @@ createApp({
     const isLoggedIn = ref(false);
     const data = ref(null);
 
-    const accessToken = localStorage.getItem('accessToken');
-
-    if (accessToken) {
-      isLoggedIn.value = true;
-    }
-
+    // 清除 access token  
+    localStorage.removeItem('accessToken');
+    
     async function login() {
       try {
         const response = await axiosInstance.post('/login', { username: username.value, password: password.value });
@@ -81,7 +78,7 @@ createApp({
 
     function getDataInBatches() {
       const list = [getData('1qq'), getData('2qq'), getData('3qq')];
-    
+
       Promise.all(list)
         .then(res => {
           console.log('getDataInBatches:', res);

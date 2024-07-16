@@ -29,6 +29,7 @@ async function refreshToken(originalRequest) {
     // 获取新的 access token 失败，清除 access token 并重新登录
     localStorage.removeItem('accessToken');
     delete axiosInstance.defaults.headers.common['Authorization'];
+    queue = []
     return Promise.reject(err)
   }).finally(() => {
     refreshing = false;
