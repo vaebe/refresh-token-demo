@@ -98,24 +98,8 @@ function getHeaderToken(req) {
   }
 }
 
-// 刷新访问令牌接口
-app.post('/refresh-token', (req, res) => {
-  const accessTokenInfo = getHeaderToken(req)
-  // 未携带 accessToken 返回错误
-  if (accessTokenInfo.code !== 0) {
-    res.status(403).json({ message: accessTokenInfo.message });
-    return
-  }
 
-  // 错误有三种 JsonWebTokenError| NotBeforeError | TokenExpiredError;
-  try {
-    // 只要不返回错误就代表成功!
-    jwt.verify(accessTokenInfo.message, ACCESS_TOKEN_SECRET);
-  } catch (err) {
-    res.status(403).json({ message: '未知的 token!' });
-    return
-  }
-
+function refreshToken(res, req,accessTokenInfo) {
   // accessToken 验证通过 判断 refreshToken 是否可以续签
   const refreshToken = req.cookies[gteCookieRefreshTokenKey(accessTokenInfo.userId)];
 
@@ -135,6 +119,34 @@ app.post('/refresh-token', (req, res) => {
     res.status(403).json({ message: '未知的 refreshToken' });
     return
   }
+}
+
+// 刷新访问令牌接口
+app.post('/refresh-token', (req, res) => {
+  const accessTokenInfo = getHeaderToken(req)
+  // 未携带 accessToken 返回错误
+  if (accessTokenInfo.code !== 0) {
+    res.status(403).json({ message: accessTokenInfo.message });
+    return
+  }
+
+  // 错误有三种 JsonWebTokenError| NotBeforeError | TokenExpiredError;
+  try {
+    // 只要不返回错误就代表成功!
+    jwt.verify(accessTokenInfo.message, ACCESS_TOKEN_SECRET);
+  } catch (err) {
+    // token 过期
+    if (err.name === 'TokenExpiredError') {
+      refreshToken(res, req,accessTokenInfo)
+      return
+    }
+
+    res.status(403).json({ message: '未知的 token!' });
+    return
+  }
+
+
+  refreshToken(res, req,accessTokenInfo)
 });
 
 // 退出登录成功
@@ -143,7 +155,7 @@ function logoutSuccess(res, accessTokenInfo) {
   res.clearCookie(gteCookieRefreshTokenKey(accessTokenInfo.userId));
 
   // 清除缓存的 accessToken
-  delete accessTokens[accessTokenInfo.message]; 
+  delete accessTokens[accessTokenInfo.message];
 
   res.json({ message: 'Logged out successfully' });
 }
@@ -174,7 +186,7 @@ app.post('/logout', (req, res) => {
 });
 
 // 模拟获取数据
-app.get('/data', (req, res) => {
+app.get('/data/:id', (req, res) => {
   const accessTokenInfo = getHeaderToken(req)
   // 未携带 accessToken 返回错误
   if (accessTokenInfo.code !== 0) {

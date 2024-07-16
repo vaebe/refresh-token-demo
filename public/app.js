@@ -1,51 +1,50 @@
-const { createApp } = Vue;
+const { createApp, ref, onMounted } = Vue;
 
 createApp({
-  data() {
-    return {
-      username: 'user1',
-      password: 'pw1',
-      isLoggedIn: false,
-      data: null
-    };
-  },
-  mounted() {
+  setup() {
+    const username = ref('user1');
+    const password = ref('pw1');
+    const isLoggedIn = ref(false);
+    const data = ref(null);
+
     const accessToken = localStorage.getItem('accessToken');
+
     if (accessToken) {
-      this.isLoggedIn = true;
+      isLoggedIn.value = true;
     }
-  },
-  methods: {
-    async login() {
+
+    async function login() {
       try {
-        const response = await axiosInstance.post('/login', { username: this.username, password: this.password });
+        const response = await axiosInstance.post('/login', { username: username.value, password: password.value });
         const accessToken = response.data.accessToken;
         localStorage.setItem('accessToken', accessToken);
 
-        this.isLoggedIn = true;
+        isLoggedIn.value = true;
 
         console.log('Logged in', JSON.stringify(response.data));
       } catch (error) {
         console.error(error);
         console.log('Logged in', '登录失败!');
       }
-    },
-    async logout() {
+    }
+
+    async function logout() {
       try {
         await axiosInstance.post('/logout');
         localStorage.removeItem('accessToken');
 
-        this.isLoggedIn = false;
-        this.data = null;
+        isLoggedIn.value = false;
+        data.value = null;
 
         console.log('Logged out');
       } catch (error) {
         console.error(error);
       }
-    },
-    async refreshToken() {
+    }
+
+    async function refreshToken() {
       try {
-        console.log('Refreshed token: start===============================', );
+        console.log('Refreshed token: start===============================');
 
         const response = await axiosInstance.post('/refresh-token');
         const accessToken = response.data.accessToken;
@@ -54,25 +53,54 @@ createApp({
         console.log('Refreshed token:', accessToken);
       } catch (error) {
         localStorage.removeItem('accessToken');
-        this.isLoggedIn = false;
-        this.data = null;
+        isLoggedIn.value = false;
+        data.value = null;
       }
-    },
-    async getData() {
+    }
+
+    async function getData(params) {
       try {
-        const response = await axiosInstance.get('/data');
-        this.data = response.data;
+        const response = await axiosInstance.get(`/data/${params}`);
+        data.value = response.data;
         console.log('Got data:', JSON.stringify(response.data));
+
+        return response.data;
       } catch (error) {
-        console.error( error);
+        console.error(error)
 
         if (error.response.status === 403) {
           localStorage.removeItem('accessToken');
-          this.isLoggedIn = false;
-          this.data = null;
-          console.log('Got data:', '刷新token失败，请重新登录!')
+          isLoggedIn.value = false;
+          data.value = null;
+          console.log('Got data:', '刷新token失败，请重新登录!');
         }
+
+        return error
       }
     }
+
+    function getDataInBatches() {
+      const list = [getData('1qq'), getData('2qq'), getData('3qq')];
+    
+      Promise.all(list)
+        .then(res => {
+          console.log('getDataInBatches:', res);
+        })
+        .catch(error => {
+          console.error('getDataInBatches', error);
+        });
+    }
+
+    return {
+      username,
+      password,
+      isLoggedIn,
+      data,
+      login,
+      logout,
+      refreshToken,
+      getData,
+      getDataInBatches
+    };
   }
 }).mount('#app');

@@ -6,7 +6,7 @@
   <title>Vue 3 App</title>
   <script src="https://cdn.jsdelivr.net/npm/vue@3"></script>
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-  <script src="axios-config.js"></script>
+  <script src="api2.js"></script>
 </head>
 <body>
   <div id="app">
@@ -14,12 +14,13 @@
     <div v-if="!isLoggedIn">
       <input v-model="username" placeholder="Username">
       <input v-model="password" type="password" placeholder="Password">
-      <button @click="login">Login</button>
+      <button @click="login">登录</button>
     </div>
     <div v-else>
-      <button @click="logout">Logout</button>
-      <button @click="refreshToken">Refresh Token</button>
-      <button @click="getData">Get Data</button>
+      <button @click="logout">退出登录</button>
+      <button @click="refreshToken">刷新token</button>
+      <button @click="getData">获取数据</button>
+      <button @click="getDataInBatches">批量获取数据</button>
     </div>
     <div v-if="data">
       <h2>Data:</h2>
